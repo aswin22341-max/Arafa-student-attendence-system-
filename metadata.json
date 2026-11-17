@@ -1,0 +1,6 @@
+{
+  "name": "Arafa English School RFID Attendance",
+  "description": "Real-time ESP8266 RFID student attendance system for Arafa English School (Classes 1-12) with manual admin enrollment, cloud historical logs, and teacher CSV reports.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
