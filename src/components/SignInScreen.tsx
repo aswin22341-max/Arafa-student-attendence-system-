@@ -32,28 +32,20 @@ export function SignInScreen() {
 
   return (
     <div className="min-h-screen bg-slate-50/90 flex flex-col justify-between">
-      <header className="bg-white border-b border-slate-200/90 px-6 py-4 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
-        <div className="max-w-6xl mx-auto flex items-center justify-center sm:justify-start">
-          <img
-            src="/assets/aistudio/logo-light_8b7c036c.png"
-            alt="Arafa English School"
-            referrerPolicy="no-referrer"
-            className="h-16 sm:h-24 w-auto object-contain"
-          />
-        </div>
-      </header>
-
-      <main className="flex-1 flex items-center justify-center px-6 py-12">
-        <div className="w-full max-w-md bg-white border border-slate-200/85 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.08)] rounded-2xl p-8 space-y-6">
-          <div className="space-y-1.5">
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-              Administrator Login
-            </h1>
-            <p className="text-sm text-slate-500">
-              Sign in to manage student enrollment, view live RFID gate scans,
-              and export attendance reports.
-            </p>
+      <main className="flex-1 flex items-center justify-center px-5 py-10">
+        <div className="w-full max-w-md bg-white border border-slate-200/85 shadow-[0_4px_24px_-4px_rgba(15,23,42,0.08)] rounded-2xl p-7 sm:p-8 space-y-5">
+          <div className="flex items-center justify-center pb-5 border-b border-slate-100">
+            <img
+              src="/assets/aistudio/logo-light_8b7c036c.png"
+              alt="Arafa English School"
+              referrerPolicy="no-referrer"
+              className="w-full max-w-[280px] sm:max-w-[340px] max-h-24 h-auto object-contain"
+            />
           </div>
+
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 text-center">
+            Administrator Login
+          </h1>
 
           {displayError && (
             <div
