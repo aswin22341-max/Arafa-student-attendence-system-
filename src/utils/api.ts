@@ -11,32 +11,129 @@ export interface AdminProfile {
   fullName: string;
 }
 
+export async function parseApiResponse<T>(
+  res: Response,
+  fallbackError: string
+): Promise<T> {
+  const rawText = await res.text();
+  const trimmed = rawText.trim();
+  const contentType = (res.headers.get('content-type') || '').toLowerCase();
+
+  let data: any = null;
+  if (
+    trimmed.length > 0 &&
+    (contentType.includes('application/json') ||
+      trimmed.startsWith('{') ||
+      trimmed.startsWith('['))
+  ) {
+    try {
+      data = JSON.parse(trimmed);
+    } catch {
+      data = null;
+    }
+  }
+
+  if (!res.ok) {
+    let message =
+      typeof data?.error === 'string' && data.error.trim()
+        ? data.error.trim()
+        : fallbackError;
+
+    if (
+      !data &&
+      (res.status === 404 ||
+        res.status === 502 ||
+        res.status === 503 ||
+        res.status === 504 ||
+        /the page could not be found/i.test(trimmed))
+    ) {
+      message =
+        'Attendance server is waking up or unavailable. Please refresh the page and try again.';
+    }
+
+    const err = new Error(message) as Error & {
+      fieldErrors?: Record<string, string>;
+      status?: number;
+      isNonJsonGatewayError?: boolean;
+    };
+    err.status = res.status;
+    err.isNonJsonGatewayError = !data;
+    if (data?.fieldErrors) {
+      err.fieldErrors = data.fieldErrors;
+    }
+    throw err;
+  }
+
+  if (data === null) {
+    const err = new Error(
+      'Received an unexpected non-JSON response from the server. Please refresh the page and try again.'
+    ) as Error & { status?: number; isNonJsonGatewayError?: boolean };
+    err.status = res.status;
+    err.isNonJsonGatewayError = true;
+    throw err;
+  }
+
+  return data as T;
+}
+
+function isRetryableGatewayError(err: any): boolean {
+  return Boolean(
+    err?.isNonJsonGatewayError &&
+      (err?.status === 404 ||
+        err?.status === 502 ||
+        err?.status === 503 ||
+        err?.status === 504)
+  );
+}
+
 export async function loginAdmin(
   username: string,
   password: string
 ): Promise<{ token: string; admin: AdminProfile }> {
-  const res = await fetch('/api/auth/login', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, password }),
-  });
+  const attemptLogin = async () => {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    });
+    return parseApiResponse<{ token: string; admin: AdminProfile }>(
+      res,
+      'Sign-in failed.'
+    );
+  };
 
-  const data = await res.json();
-  if (!res.ok) {
-    throw new Error(data?.error || 'Sign-in failed.');
+  try {
+    return await attemptLogin();
+  } catch (err: any) {
+    if (isRetryableGatewayError(err)) {
+      await new Promise((resolve) => setTimeout(resolve, 750));
+      return await attemptLogin();
+    }
+    throw err;
   }
-  return data;
 }
 
 export async function fetchAdminMe(token: string): Promise<AdminProfile> {
-  const res = await fetch('/api/auth/me', {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!res.ok) {
-    throw new Error('Session expired');
+  const attemptFetch = async () => {
+    const res = await fetch('/api/auth/me', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await parseApiResponse<{ admin: AdminProfile }>(
+      res,
+      'Session expired'
+    );
+    return data.admin;
+  };
+
+  try {
+    return await attemptFetch();
+  } catch (err: any) {
+    if (isRetryableGatewayError(err)) {
+      await new Promise((resolve) => setTimeout(resolve, 750));
+      return await attemptFetch();
+    }
+    throw err;
   }
-  const data = await res.json();
-  return data.admin;
 }
 
 export async function changeAdminPassword(
@@ -52,10 +149,10 @@ export async function changeAdminPassword(
     },
     body: JSON.stringify({ currentPassword, newPassword }),
   });
-  const data = await res.json();
-  if (!res.ok) {
-    throw new Error(data?.error || 'Could not update password.');
-  }
+  await parseApiResponse<{ updated: boolean }>(
+    res,
+    'Could not update password.'
+  );
 }
 
 async function authFetch<T>(
@@ -72,27 +169,7 @@ async function authFetch<T>(
     },
   });
 
-  if (!res.ok) {
-    let message = `Request failed (${res.status})`;
-    try {
-      const data = await res.json();
-      if (data?.error) {
-        message = data.error;
-      }
-      if (data?.fieldErrors) {
-        const err = new Error(message) as Error & {
-          fieldErrors?: Record<string, string>;
-        };
-        err.fieldErrors = data.fieldErrors;
-        throw err;
-      }
-    } catch (e: any) {
-      if (e?.fieldErrors) throw e;
-    }
-    throw new Error(message);
-  }
-
-  return res.json();
+  return parseApiResponse<T>(res, `Request failed (${res.status})`);
 }
 
 export async function fetchStudents(

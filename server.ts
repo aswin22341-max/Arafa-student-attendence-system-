@@ -693,6 +693,10 @@ app.delete('/api/devices/:id', requireAuth, async (req: AuthRequest, res) => {
   }
 });
 
+app.all('/api/*', (_req, res) => {
+  res.status(404).json({ error: 'API endpoint not found.' });
+});
+
 // Vite dev middleware or production static bundle
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
